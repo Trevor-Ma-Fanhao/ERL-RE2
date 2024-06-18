@@ -1,11 +1,24 @@
 
 # ICLR 2023: ERL-Re$^2$: Efficient Evolutionary Reinforcement Learning with Shared State Representation and Individual Policy Representation
 
-Official code for the paper "ERL-Re$^2$: Efficient Evolutionary Reinforcement Learning with Shared State Representation and Individual Policy Representation" (<https://arxiv.org/abs/2210.17375>). **ERL-Re$^2$ achieves current SOTA in the ERL field (OpenAI MUJOCO Tasks)**.
+Official code for the paper "ERL-Re$^2$: Efficient Evolutionary Reinforcement Learning with Shared State Representation and Individual Policy Representation" (<https://arxiv.org/abs/2210.17375>). **:trophy: ERL-Re$^2$ achieves current SOTA in the ERL field (OpenAI MUJOCO Tasks)**.
 
 **ERL-Re$^2$** is a novel framework to integrate EA and RL. The cornerstone of ERL-Re$^2$ is two-scale representation: all EA and RL policies share the same nonlinear state representation while maintaining individual linear policy representations. The state representation conveys expressive common features of the environment learned by all the agents collectively; the linear policy representation provides a favorable space for efficient policy optimization, where novel behavior-level crossover and mutation operations can be performed. Moreover, the linear policy representation allows convenient generalization of policy fitness with the help of Policy-extended Value Function Approximator (PeVFA), further improving the sample efficiency. This repository is based on <https://github.com/crisbodnar/pderl>.
 
+
+### NEWS :fire::fire::fire: Two ERL works are accepted by ICML 2024: 
+
+:triangular_flag_on_post: [EvoRainbow: Combining Improvements in Evolutionary Reinforcement Learning for Policy Search](https://openreview.net/forum?id=75Hes6Zse4)
+
+:triangular_flag_on_post: [Value-Evolutionary-Based Reinforcement Learning](https://openreview.net/forum?id=h9LcbJ3l9r)
+
+**The codes for both works have already been released.
+We invite everyone to follow our work!**
+
 ### ![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) You can explore more information on state-of-the-art ERL works by visiting [https://github.com/yeshenpy/Awesome-Evolutionary-Reinforcement-Learning](https://github.com/yeshenpy/Awesome-Evolutionary-Reinforcement-Learning).
+
+
+
 
 # Installation
 Known dependencies: MUJOCO 200,

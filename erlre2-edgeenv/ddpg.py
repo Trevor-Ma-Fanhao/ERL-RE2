@@ -531,8 +531,6 @@ class TD3(object):
             if it % policy_freq == 0:
 
                 # Compute actor loss
-                # 这里的目的是将当前state的资源量转换为embedding，然后根据embedding选择action
-                # 对应论文中的共享空间 z
                 s_z= self.state_embedding.forward(state)
                 actor_loss = -self.critic.Q1(state, self.actor.select_action_from_z(s_z)).mean()
                 # Optimize the actor

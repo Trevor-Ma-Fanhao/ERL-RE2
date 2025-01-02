@@ -122,6 +122,8 @@ class Actor(nn.Module):
     def forward(self, input, state_embedding):
         s_z = state_embedding.forward(input)
         action = self.w_out(s_z).tanh()
+        # 将输出映射到离散值 -1, 0, 1
+        action = torch.where(action > 0.5, torch.tensor(1.0), torch.where(action < -0.5, torch.tensor(-1.0), torch.tensor(0.0)))
         return action
 
     def select_action_from_z(self,s_z):
@@ -429,7 +431,7 @@ class TD3(object):
 
         self.buffer = replay_memory.ReplayMemory(args.individual_bs, args.device)
 
-
+        # PNV要进行修改
         self.PVN = Policy_Value_Network(args).to(self.device)
         self.PVN_Target = Policy_Value_Network(args).to(self.device)
         self.PVN_Target.load_state_dict(self.PVN.state_dict())
@@ -479,6 +481,7 @@ class TD3(object):
                     param = param.repeat(len(state), 1)
     
                     with torch.no_grad():
+                        # 默认是第一种情况 
                         if self.args.OFF_TYPE == 1:
                             input = torch.cat([next_state,actor.forward(next_state,self.state_embedding)],-1)
                         else :
@@ -491,13 +494,15 @@ class TD3(object):
                         input = torch.cat([state,action], -1)
                     else:
                         input = self.state_embedding.forward(state)
-    
+                    # PNV要进行修改
                     current_Q1, current_Q2 = self.PVN.forward(input, param)
                     pv_loss += F.mse_loss(current_Q1, target_Q)+ F.mse_loss(current_Q2, target_Q)
     
+                # PNV要进行修改
                 self.PVN_optimizer.zero_grad()
                 pv_loss.backward()
                 nn.utils.clip_grad_norm_(self.PVN.parameters(), 10)
+                # PNV要进行修改
                 self.PVN_optimizer.step()
                 pv_loss_list.append(pv_loss.cpu().data.numpy().flatten())
             else :
@@ -553,7 +558,7 @@ class TD3(object):
                                 input = torch.cat([state,actor.forward(state,self.state_embedding)], -1)
                             else:
                                 input = self.state_embedding.forward(state)
-    
+                            # PNV要进行修改
                             new_actor_loss += -self.PVN.Q1(input,param).mean()
 
 
@@ -576,6 +581,7 @@ class TD3(object):
                 for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                     target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
 
+                # PNV要进行修改 
                 for param, target_param in zip(self.PVN.parameters(), self.PVN_Target.parameters()):
                     target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
 

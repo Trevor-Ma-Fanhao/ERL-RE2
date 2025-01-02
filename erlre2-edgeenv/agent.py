@@ -57,14 +57,14 @@ class Agent:
         self.old_fitness = None
         self.evo_times = 0
 
-
+    # evaluate方法 通过长路径来进行打分
     def evaluate(self, agent: ddpg.GeneticAgent or ddpg.TD3, state_embedding_net, is_render=False, is_action_noise=False,
                  store_transition=True, net_index=None, is_random =False, rl_agent_collect_data = False,  use_n_step_return = False,PeVFA=None):
         total_reward = 0.0
         total_error = 0.0
         policy_params = torch.nn.utils.parameters_to_vector(list(agent.actor.parameters())).data.cpu().numpy().reshape([-1])
         state = self.env.reset()
-        done = False
+        # done = False
 
         state_list = []
         reward_list = []
@@ -75,40 +75,41 @@ class Agent:
         episode_timesteps = 0
         all_state = []
         all_action = []
-
-        while not done:
+        for episode_timesteps in range(1000):
             if store_transition:
                 self.num_frames += 1; self.gen_frames += 1
                 if rl_agent_collect_data:
-                    self.rl_agent_frames +=1
-            if self.args.render and is_render: self.env.render()
-            
+                    self.rl_agent_frames += 1
+            # 原代码中用来可视化的
+            # if self.args.render and is_render: self.env.render()
             if is_random:
                 action = self.env.action_space.sample()
-            else :
-                action = agent.actor.select_action(np.array(state),state_embedding_net)
+            else:
+                action = agent.actor.select_action(np.array(state), state_embedding_net)
+                # 对于离散动作量引入的噪声 ， 突变的概率可以后期修改
                 if is_action_noise:
-                    
-                    action = (action + np.random.normal(0, 0.1, size=self.args.action_dim)).clip(-1.0, 1.0)
+                    noise = np.random.choice([-1, 0, 1], size=self.args.action_dim, p=[0.33, 0.34, 0.33])
+                    action = (action + noise).clip(-1.0, 1.0)
+                    action = np.where(action > 0.5, 1.0, np.where(action < -0.5, -1.0, 0.0))
             all_state.append(np.array(state))
             all_action.append(np.array(action))
             # Simulate one step in environment
             next_state, reward, done, info = self.env.step(action.flatten())
             done_bool = 0 if episode_timesteps + 1 == 1000 else float(done)
             total_reward += reward
-            n_step_discount_reward += math.pow(self.args.gamma,episode_timesteps)*reward
+            n_step_discount_reward += math.pow(self.args.gamma, episode_timesteps) * reward
             state_list.append(state)
             reward_list.append(reward)
             policy_params_list.append(policy_params)
             action_list.append(action.flatten())
 
             transition = (state, action, next_state, reward, done_bool)
+            # 这里对replaybuffer做更新
             if store_transition:
                 next_action = agent.actor.select_action(np.array(next_state), state_embedding_net)
-                self.replay_buffer.add((state, next_state, action, reward, done_bool, next_action ,policy_params))
+                self.replay_buffer.add((state, next_state, action, reward, done_bool, next_action, policy_params))
                 #self.replay_buffer.add(*transition)
                 agent.buffer.add(*transition)
-            episode_timesteps += 1
             state = next_state
 
             if use_n_step_return:
@@ -118,22 +119,19 @@ class Agent:
                     param = torch.FloatTensor(param).to(self.args.device)
                     param = param.repeat(1, 1)
 
-                    # print("1")
                     next_state = torch.FloatTensor(np.array([next_state])).to(self.args.device)
                     next_action = torch.FloatTensor(np.array([next_action])).to(self.args.device)
 
                     input = torch.cat([next_state, next_action], -1)
-                    # print("2")
                     next_Q1, next_Q2 = PeVFA.forward(input, param)
-                    # 新增代码
                     next_state_Q = torch.min(next_Q1, next_Q2).cpu().data.numpy().flatten()
                     next_state_Q = self.env.get_state_Q(next_state_Q)
 
-                    n_step_discount_reward += math.pow(self.args.gamma,episode_timesteps) *next_state_Q[0]
+                    n_step_discount_reward += math.pow(self.args.gamma, episode_timesteps) * next_state_Q[0]
                     break
         if store_transition: self.num_games += 1
 
-        return {'n_step_discount_reward':n_step_discount_reward,'reward': total_reward,  'td_error': total_error, "state_list": state_list, "reward_list":reward_list, "policy_prams_list":policy_params_list, "action_list":action_list}
+        return {'n_step_discount_reward': n_step_discount_reward, 'reward': total_reward, 'td_error': total_error, "state_list": state_list, "reward_list": reward_list, "policy_prams_list": policy_params_list, "action_list": action_list}
 
 
     def rl_to_evo(self, rl_agent: ddpg.TD3, evo_net: ddpg.GeneticAgent):
@@ -216,12 +214,14 @@ class Agent:
             if random_num_num< self.args.theta:
                 for i, net in enumerate(self.pop):
                     for _ in range(self.args.num_evals):
+                        # 这一步为所有EA个体打分 
                         episode = self.evaluate(net, self.rl_agent.state_embedding, is_render=False, is_action_noise=False,net_index=i)
                         real_rewards[i] += episode['reward']
                 real_rewards /= self.args.num_evals
                 all_fitness = real_rewards
             else :
                 for i, net in enumerate(self.pop):
+                    # 
                     episode = self.evaluate(net, self.rl_agent.state_embedding, is_render=False, is_action_noise=False,net_index=i,use_n_step_return = True,PeVFA=self.rl_agent.PVN)
                     fake_rewards[i] += episode['n_step_discount_reward']
                     MC_n_steps_rewards[i]  +=episode['reward']
@@ -232,7 +232,6 @@ class Agent:
 
         self.total_use +=1.0
         # all_fitness = 0.8 * rankdata(rewards) + 0.2 * rankdata(errors)
-
         keep_c_loss = [0.0 / 1000]
         min_fintess = 0.0
         best_old_fitness = 0.0

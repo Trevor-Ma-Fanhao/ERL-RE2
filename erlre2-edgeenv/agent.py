@@ -128,7 +128,10 @@ class Agent:
                     input = torch.cat([next_state, next_action], -1)
                     next_Q1, next_Q2 = PeVFA.forward(input, param)
                     next_state_Q = torch.min(next_Q1, next_Q2).cpu().data.numpy().flatten()
-                    next_state_Q = self.env.get_state_Q(next_state_Q)
+                    # 获取状态的Q值 ？ 暂时注释掉
+                    # 如果 self.env.get_state_Q(next_state_Q) 的目的是将 next_state_Q 转换为环境特定的格式或进行某种处理（例如归一化、映射等），
+                    # 那么注释掉这行代码可能会导致后续计算中使用的 Q 值不符合环境的要求。这可能会影响到后续的决策或学习过程。
+                    # next_state_Q = self.env.get_state_Q(next_state_Q)
 
                     n_step_discount_reward += math.pow(self.args.gamma, episode_timesteps) * next_state_Q[0]
                     break

@@ -122,13 +122,15 @@ class Actor(nn.Module):
     def forward(self, input, state_embedding):
         s_z = state_embedding.forward(input)
         action = self.w_out(s_z).tanh()
-        # 将输出映射到离散值 -1, 0, 1
-        action = torch.where(action > 0.5, torch.tensor(1.0), torch.where(action < -0.5, torch.tensor(-1.0), torch.tensor(0.0)))
+        # # 将输出映射到离散值 -1, 0, 1
+        # action = torch.where(action > 0.5, torch.tensor(1.0), torch.where(action < -0.5, torch.tensor(-1.0), torch.tensor(0.0)))
         return action
 
     def select_action_from_z(self,s_z):
 
         action = self.w_out(s_z).tanh()
+        # # 将输出映射到离散值 -1, 0, 1
+        # action = torch.where(action > 0.5, torch.tensor(1.0), torch.where(action < -0.5, torch.tensor(-1.0), torch.tensor(0.0)))
         return action
 
     def select_action(self, state, state_embedding):
@@ -494,15 +496,15 @@ class TD3(object):
                         input = torch.cat([state,action], -1)
                     else:
                         input = self.state_embedding.forward(state)
-                    # PNV要进行修改
+                    # PVN要进行修改
                     current_Q1, current_Q2 = self.PVN.forward(input, param)
                     pv_loss += F.mse_loss(current_Q1, target_Q)+ F.mse_loss(current_Q2, target_Q)
     
-                # PNV要进行修改
+                # PVN 更新
                 self.PVN_optimizer.zero_grad()
                 pv_loss.backward()
                 nn.utils.clip_grad_norm_(self.PVN.parameters(), 10)
-                # PNV要进行修改
+                
                 self.PVN_optimizer.step()
                 pv_loss_list.append(pv_loss.cpu().data.numpy().flatten())
             else :
@@ -514,6 +516,7 @@ class TD3(object):
 
             next_action = (self.actor_target.forward(next_state,self.state_embedding_target)+noise).clamp(-self.max_action, self.max_action)
 
+            # Critic 更新 实际上和PVN更新是类似的
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
             target_Q = torch.min(target_Q1, target_Q2)

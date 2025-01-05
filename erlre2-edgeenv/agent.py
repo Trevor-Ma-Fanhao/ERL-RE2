@@ -83,14 +83,16 @@ class Agent:
             # 原代码中用来可视化的
             # if self.args.render and is_render: self.env.render()
             if is_random:
+                # 直接随机采样一个动作
                 action = self.env.action_space.sample()
             else:
                 action = agent.actor.select_action(np.array(state), state_embedding_net)
                 # 对于离散动作量引入的噪声 ， 突变的概率可以后期修改
                 if is_action_noise:
-                    noise = np.random.choice([-1, 0, 1], size=self.args.action_dim, p=[0.33, 0.34, 0.33])
-                    action = (action + noise).clip(-1.0, 1.0)
-                    action = np.where(action > 0.5, 1.0, np.where(action < -0.5, -1.0, 0.0))
+                    # 加入正态分布的噪声
+                    action = (action + np.random.normal(0, 0.1, size=self.args.action_dim)).clip(-1.0, 1.0)
+            # 将输出映射到离散值 -1, 0, 1 （阈值可以后期修改）
+            action = torch.where(action > 0.5, torch.tensor(1.0), torch.where(action < -0.5, torch.tensor(-1.0), torch.tensor(0.0))) 
             all_state.append(np.array(state))
             all_action.append(np.array(action))
             # Simulate one step in environment
@@ -110,6 +112,7 @@ class Agent:
                 self.replay_buffer.add((state, next_state, action, reward, done_bool, next_action, policy_params))
                 #self.replay_buffer.add(*transition)
                 agent.buffer.add(*transition)
+            # 更新当前的state
             state = next_state
 
             if use_n_step_return:
